@@ -1,0 +1,58 @@
+name: mingw
+
+on:
+  push:
+    tags: [ mingw ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        msystem: [ MINGW64, MINGW32 ]
+    name: ${{ matrix.msystem }}
+    runs-on: windows-latest
+    env:
+      MSYSTEM: ${{ matrix.msystem }}
+    defaults:
+      run:
+        shell: C:\shells\msys2bash.cmd {0}
+    steps:
+    - name: Disable autocrlf
+      shell: bash
+      run: git config --global core.autocrlf false
+    - uses: actions/checkout@v4
+    - name: Install dependency
+      run: |
+        pacman -Sy --noconfirm patch p7zip \
+          ${MINGW_PACKAGE_PREFIX}-make \
+          ${MINGW_PACKAGE_PREFIX}-autotools \
+          ${MINGW_PACKAGE_PREFIX}-nasm \
+          ${MINGW_PACKAGE_PREFIX}-meson \
+          ${MINGW_PACKAGE_PREFIX}-lua51 \
+          ${MINGW_PACKAGE_PREFIX}-cc
+        rm ${MINGW_PREFIX}/lib/liblua5.1.dll.a
+
+    - name: Build packages
+      run: |
+        for pkg in mbedtls freetype harfbuzz libass dav1d ffmpeg spirv-cross shaderc; do
+          echo building $p
+          pushd mingw/$pkg; makepkg-mingw -sciCf --noconfirm; popd
+        done
+        for pkg in mpv curl; do
+          echo building $pkg
+          pushd mingw/$pkg; makepkg-mingw -scCf --noconfirm; popd
+        done
+    - name: Upload packages
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: mingw
+        prerelease: true
+        files: |
+          mingw/curl/*.pkg.tar.zst
+          mingw/mpv/*.pkg.tar.zst
+        body: |
+          ![download](https://img.shields.io/github/downloads/${{ github.repository }}/mingw/total?label=Downloads)

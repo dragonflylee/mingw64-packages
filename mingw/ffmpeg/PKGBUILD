@@ -1,0 +1,90 @@
+# Maintainer: Alexey Pavlov <Alexpux@gmail.com>
+# Contributor: Zach Bacon <11doctorwhocanada@gmail.com>
+# Contributor: wirx6 <wirx654@gmail.com>
+# Contributor: Ray Donnelly <mingw.android@gmail.com>
+
+_realname=ffmpeg
+pkgbase="mingw-w64-${_realname}"
+pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
+pkgver=6.1.2
+pkgrel=9
+pkgdesc="Complete solution to record, convert and stream audio and video (mingw-w64)"
+arch=('any')
+mingw_arch=('mingw32' 'mingw64' 'clangarm64')
+url="https://ffmpeg.org/"
+license=('spdx:GPL-3.0-or-later')
+depends=(
+  "${MINGW_PACKAGE_PREFIX}-bzip2"
+  "${MINGW_PACKAGE_PREFIX}-dav1d"
+  "${MINGW_PACKAGE_PREFIX}-freetype"
+  "${MINGW_PACKAGE_PREFIX}-fribidi"
+  "${MINGW_PACKAGE_PREFIX}-libass"
+  "${MINGW_PACKAGE_PREFIX}-mbedtls"
+  "${MINGW_PACKAGE_PREFIX}-zlib"
+)
+makedepends=(
+  "${MINGW_PACKAGE_PREFIX}-cc"
+  "${MINGW_PACKAGE_PREFIX}-autotools"
+  "${MINGW_PACKAGE_PREFIX}-pkgconf"
+  $([[ ${MINGW_PACKAGE_PREFIX} == *-clang-aarch64* ]] || echo "${MINGW_PACKAGE_PREFIX}-amf-headers")
+  $([[ ${MINGW_PACKAGE_PREFIX} == *-clang-aarch64* ]] || echo "${MINGW_PACKAGE_PREFIX}-ffnvcodec-headers")
+  $([[ ${MINGW_PACKAGE_PREFIX} == *-clang-aarch64* ]] || echo "${MINGW_PACKAGE_PREFIX}-nasm")
+)
+options=('staticlibs' '!strip')
+source=("https://ffmpeg.org/releases/${_realname}-${pkgver}.tar.xz")
+sha256sums=('3b624649725ecdc565c903ca6643d41f33bd49239922e45c9b1442c63dca4e38')
+
+build() {
+  mkdir -p "${srcdir}/build-${MSYSTEM}" && cd "${srcdir}/build-${MSYSTEM}"
+  ${srcdir}/${_realname}-${pkgver}/configure \
+    --prefix=${MINGW_PREFIX} \
+    --target-os=mingw32 \
+    --arch=${CARCH%%-*} \
+    --cc=${CC} \
+    --cxx=${CXX} \
+    --disable-shared \
+    --enable-static \
+    --pkg-config-flags=-static \
+    --enable-runtime-cpudetect \
+    --enable-pic \
+    --disable-programs \
+    --disable-debug \
+    --disable-doc \
+    --disable-avdevice \
+    --disable-encoders \
+    --disable-decoders \
+    --disable-muxers \
+    --disable-demuxers \
+    --disable-filters \
+    --disable-protocols \
+    --enable-swscale \
+    --enable-swresample \
+    --enable-network  \
+    --enable-dxva2 \
+    --enable-d3d11va \
+    --enable-decoder=flac,aac,opus,mp3,h264,hevc,libdav1d,hdr,srt,eac3 \
+    --enable-protocol=file,http,tcp,udp,hls,https,tls,httpproxy \
+    --enable-demuxer=mov,flv,hls \
+    --enable-filter=hflip,vflip,transpose \
+    --enable-zlib \
+    --enable-bzlib \
+    --enable-libass \
+    --enable-libdav1d \
+    --enable-libfreetype \
+    --enable-libfribidi \
+    --enable-mbedtls \
+    --enable-gpl \
+    --enable-version3 \
+    $( [[ "${MINGW_PACKAGE_PREFIX}" != *clang-aarch64* ]] \
+      && echo "--enable-nvdec")
+
+  make -j4
+}
+
+package() {
+  cd "${srcdir}/build-${MSYSTEM}"
+  make DESTDIR="${pkgdir}" install
+
+  local PREFIX_DEPS=$(cygpath -am ${MINGW_PREFIX})
+  find ${pkgdir}${MINGW_PREFIX}/lib/pkgconfig -name *.pc -exec sed -i -e"s|${PREFIX_DEPS}|${MINGW_PREFIX}|g" {} \;
+}
