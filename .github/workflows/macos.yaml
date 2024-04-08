@@ -151,11 +151,34 @@ jobs:
           --enable-videotoolbox --enable-audiotoolbox --enable-mbedtls --enable-gpl --enable-version3
         make -j$(sysctl -n hw.ncpu)
         make install
+    - name: Build libplacebo
+      if: ${{ matrix.tag != 'IntelChip_Old' }}
+      run: |
+        git clone https://github.com/haasn/libplacebo.git -b v7.349.0 --depth 1 --recurse-submodules ${{ runner.temp }}/libplacebo
+        meson setup build-libplacebo ${{ runner.temp }}/libplacebo ${{ matrix.meson }} \
+          --prefix=$CMAKE_PREFIX_PATH --buildtype=release --default-library=shared \
+          -Ddemos=false -Dtests=false -Dopengl=enabled -Dlcms=disabled -Dvulkan=disabled
+        meson compile -C build-libplacebo
+        meson install -C build-libplacebo
     - name: Build mpv
+      if: ${{ matrix.tag != 'IntelChip_Old' }}
+      run: |
+        curl --retry 5 -sSL https://github.com/mpv-player/mpv/archive/v0.39.0.tar.gz | tar zxf - -C ${{ runner.temp }}
+        curl --retry 5 -sSL https://github.com/mpv-player/mpv/commit/901b9bc8888c8bc5647d146aa4b84a9cccc9cbe1.patch | patch -d ${{ runner.temp }}/mpv-0.39.0 -Nbp1 -i -
+        meson setup build-mpv ${{ runner.temp }}/mpv-0.39.0 ${{ matrix.meson }} \
+          --prefix=$CMAKE_PREFIX_PATH --buildtype=release --default-library=shared \
+          -Dlibmpv=true -Dcplayer=false -Dtests=false -Dswift-build=disabled -Dcocoa=disabled \
+          -Dmacos-cocoa-cb=disabled -Dmacos-media-player=disabled -Dmacos-touchbar=disabled \
+          -Dlibarchive=disabled -Dlcms2=disabled -Djpeg=disabled \
+          -Dmanpage-build=disabled -Dhtml-build=disabled 
+        meson compile -C build-mpv
+        meson install -C build-mpv
+    - name: Build mpv36
+      if: ${{ matrix.tag == 'IntelChip_Old' }}
       run: |
         curl --retry 5 -sSL https://github.com/mpv-player/mpv/archive/v0.36.0.tar.gz | tar zxf - -C ${{ runner.temp }}
         patch -d ${{ runner.temp }}/mpv-0.36.0 -Nbp1 -i ${{ github.workspace }}/macos/mpv.patch
-        patch -d ${{ runner.temp }}/mpv-0.36.0 -Nbp1 -i ${{ github.workspace }}/mingw/mpv/0002-lavfi-channel-layout.patch
+        patch -d ${{ runner.temp }}/mpv-0.36.0 -Nbp1 -i ${{ github.workspace }}/macos/lavfi.patch
         meson setup build-mpv ${{ runner.temp }}/mpv-0.36.0 ${{ matrix.meson }} \
           --prefix=$CMAKE_PREFIX_PATH --buildtype=release --default-library=shared \
           -Dlibmpv=true -Dcplayer=false -Dtests=false -Dswift-build=disabled \
@@ -167,7 +190,7 @@ jobs:
     - name: Build packages
       run: |
         cd $CMAKE_PREFIX_PATH
-        tar zcf ${{ github.workspace }}/dylib-ffmpeg71-mpv36-${{ matrix.tag }}.tar.gz \
+        tar zcf ${{ github.workspace }}/dylib-ffmpeg71-${{ matrix.tag }}.tar.gz \
           include lib/pkgconfig lib/cmake lib/*.dylib
     - name: Archive Build Logs
       if: ${{ failure() }}
