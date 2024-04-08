@@ -38,7 +38,7 @@ jobs:
 
     - name: Build packages
       run: |
-        for pkg in mbedtls freetype harfbuzz libass dav1d ffmpeg spirv-cross shaderc; do
+        for pkg in mbedtls freetype harfbuzz libass dav1d ffmpeg spirv-cross shaderc libplacebo; do
           echo building $p
           pushd mingw/$pkg; makepkg-mingw -sciCf --noconfirm; popd
         done
