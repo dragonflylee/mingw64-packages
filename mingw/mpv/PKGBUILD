@@ -5,7 +5,7 @@ _realname=mpv
 pkgbase="mingw-w64-${_realname}"
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
 pkgver=0.36.0
-pkgrel=5
+pkgrel=6
 pkgdesc="Video player based on MPlayer/mplayer2 (mingw-w64)"
 url="https://mpv.io/"
 arch=('any')
@@ -25,13 +25,14 @@ makedepends=(
 options=('strip')
 source=(
   "${_realname}-${pkgver}.tar.gz"::"https://github.com/mpv-player/${_realname}/archive/v${pkgver}.tar.gz"
-  "0001-d3d11-render.patch"
+  "0001-d3d11-render.patch" "0002-lavfi-channel-layout.patch"
 )
-sha256sums=('29abc44f8ebee013bb2f9fe14d80b30db19b534c679056e4851ceadf5a5e8bf6' 'SKIP')
+sha256sums=('29abc44f8ebee013bb2f9fe14d80b30db19b534c679056e4851ceadf5a5e8bf6' 'SKIP' 'SKIP')
 
 prepare() {
   cd "${srcdir}/${_realname}-${pkgver}"
   patch -Nbp1 -i "${srcdir}/0001-d3d11-render.patch"
+  patch -Nbp1 -i "${srcdir}/0002-lavfi-channel-layout.patch"
 }
 
 build() {
