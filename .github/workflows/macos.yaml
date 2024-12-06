@@ -1,8 +1,9 @@
 name: macos-dylib
 
 on:
-  push:
-    tags: [ macos-dylib ]
+  workflow_dispatch:
+  schedule:
+  - cron: "0 10 * * 1"
 
 permissions:
   contents: write
@@ -22,11 +23,7 @@ jobs:
           arch: x86_64
           target: "10.15"
           meson: --cross-file $GITHUB_WORKSPACE/macos/macos_x86_64.txt
-        - tag: IntelChip_Old
-          arch: x86_64
-          target: "10.11"
-          meson: --cross-file $GITHUB_WORKSPACE/macos/macos_10.11.txt
-        tag: [ IntelChip_Old, IntelChip, AppleSilicon ]
+        tag: [ IntelChip, AppleSilicon ]
     runs-on: macos-latest
     env:
       CMAKE_PREFIX_PATH: /tmp
@@ -39,15 +36,6 @@ jobs:
         brew unlink python && brew link --overwrite python
     - name: Install dependency
       run: brew reinstall ninja nasm meson
-    - name: Build bootstrap
-      if: ${{ matrix.tag == 'IntelChip_Old' }}
-      run: |
-        curl --retry 5 -sSL https://github.com/boostorg/boost/releases/download/boost-1.85.0/boost-1.85.0-b2-nodocs.tar.xz | tar Jxf - -C ${{ runner.temp }}
-        cd ${{ runner.temp }}/boost-1.85.0
-        ./bootstrap.sh --with-libraries=filesystem --without-icu -prefix=$CMAKE_PREFIX_PATH
-        ./b2 install target-os=darwin variant=release --with-filesystem \
-          cxxflags="-arch ${{ matrix.arch }} -mmacosx-version-min=${{ matrix.target }}" \
-          linkflags="-arch ${{ matrix.arch }} -mmacosx-version-min=${{ matrix.target }}"
     - name: Build mbedtls
       run: |
         curl --retry 5 -sSL https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.2/mbedtls-3.6.2.tar.bz2 | tar jxf - -C ${{ runner.temp }}
@@ -139,7 +127,7 @@ jobs:
           --cc=clang --enable-cross-compile --target-os=darwin --arch=${{ matrix.arch }} \
           --extra-cflags='-arch ${{ matrix.arch }} -mmacosx-version-min=${{ matrix.target }}' \
           --extra-cxxflags='-arch ${{ matrix.arch }} -mmacosx-version-min=${{ matrix.target }}' \
-          --extra-ldflags='-arch ${{ matrix.arch }} -mmacosx-version-min=${{ matrix.target }} -Wl,-headerpad_max_install_names' \
+          --extra-ldflags='-arch ${{ matrix.arch }} -mmacosx-version-min=${{ matrix.target }}' \
           --disable-autodetect --disable-encoders --enable-pic ${{ matrix.ffmpeg }} \
           --disable-programs --disable-doc --disable-debug --disable-avdevice \
           --disable-filters --enable-filter=hflip,vflip,transpose --disable-muxers \
@@ -152,7 +140,6 @@ jobs:
         make -j$(sysctl -n hw.ncpu)
         make install
     - name: Build libplacebo
-      if: ${{ matrix.tag != 'IntelChip_Old' }}
       run: |
         git clone https://github.com/haasn/libplacebo.git -b v7.349.0 --depth 1 --recurse-submodules ${{ runner.temp }}/libplacebo
         meson setup build-libplacebo ${{ runner.temp }}/libplacebo ${{ matrix.meson }} \
@@ -161,27 +148,11 @@ jobs:
         meson compile -C build-libplacebo
         meson install -C build-libplacebo
     - name: Build mpv
-      if: ${{ matrix.tag != 'IntelChip_Old' }}
       run: |
-        curl --retry 5 -sSL https://github.com/mpv-player/mpv/archive/v0.39.0.tar.gz | tar zxf - -C ${{ runner.temp }}
-        curl --retry 5 -sSL https://github.com/mpv-player/mpv/commit/901b9bc8888c8bc5647d146aa4b84a9cccc9cbe1.patch | patch -d ${{ runner.temp }}/mpv-0.39.0 -Nbp1 -i -
-        meson setup build-mpv ${{ runner.temp }}/mpv-0.39.0 ${{ matrix.meson }} \
+        curl --retry 5 -sSL https://github.com/mpv-player/mpv/archive/master.tar.gz | tar zxf - -C ${{ runner.temp }}
+        meson setup build-mpv ${{ runner.temp }}/mpv-master ${{ matrix.meson }} \
           --prefix=$CMAKE_PREFIX_PATH --buildtype=release --default-library=shared \
           -Dlibmpv=true -Dcplayer=false -Dtests=false -Dswift-build=disabled -Dcocoa=disabled \
-          -Dmacos-cocoa-cb=disabled -Dmacos-media-player=disabled -Dmacos-touchbar=disabled \
-          -Dlibarchive=disabled -Dlcms2=disabled -Djpeg=disabled \
-          -Dmanpage-build=disabled -Dhtml-build=disabled 
-        meson compile -C build-mpv
-        meson install -C build-mpv
-    - name: Build mpv36
-      if: ${{ matrix.tag == 'IntelChip_Old' }}
-      run: |
-        curl --retry 5 -sSL https://github.com/mpv-player/mpv/archive/v0.36.0.tar.gz | tar zxf - -C ${{ runner.temp }}
-        patch -d ${{ runner.temp }}/mpv-0.36.0 -Nbp1 -i ${{ github.workspace }}/macos/mpv.patch
-        patch -d ${{ runner.temp }}/mpv-0.36.0 -Nbp1 -i ${{ github.workspace }}/macos/lavfi.patch
-        meson setup build-mpv ${{ runner.temp }}/mpv-0.36.0 ${{ matrix.meson }} \
-          --prefix=$CMAKE_PREFIX_PATH --buildtype=release --default-library=shared \
-          -Dlibmpv=true -Dcplayer=false -Dtests=false -Dswift-build=disabled \
           -Dmacos-cocoa-cb=disabled -Dmacos-media-player=disabled -Dmacos-touchbar=disabled \
           -Dlibarchive=disabled -Dlcms2=disabled -Djpeg=disabled \
           -Dmanpage-build=disabled -Dhtml-build=disabled 
@@ -190,7 +161,7 @@ jobs:
     - name: Build packages
       run: |
         cd $CMAKE_PREFIX_PATH
-        tar zcf ${{ github.workspace }}/dylib-ffmpeg71-${{ matrix.tag }}.tar.gz \
+        tar zcf ${{ github.workspace }}/dylib-ffmpeg71-nightly-${{ matrix.tag }}.tar.gz \
           include lib/pkgconfig lib/cmake lib/*.dylib
     - name: Archive Build Logs
       if: ${{ failure() }}

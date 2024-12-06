@@ -6,8 +6,8 @@
 _realname=ffmpeg
 pkgbase="mingw-w64-${_realname}"
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
-pkgver=7.1
-pkgrel=2
+pkgver=master
+pkgrel=1
 pkgdesc="Complete solution to record, convert and stream audio and video (mingw-w64)"
 arch=('any')
 mingw_arch=('mingw32' 'mingw64' 'clangarm64')
@@ -31,12 +31,12 @@ makedepends=(
   $([[ ${MINGW_PACKAGE_PREFIX} == *-clang-aarch64* ]] || echo "${MINGW_PACKAGE_PREFIX}-nasm")
 )
 options=('staticlibs' '!strip')
-source=("https://ffmpeg.org/releases/${_realname}-${pkgver}.tar.xz")
-sha256sums=('40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6')
+source=("https://github.com/FFmpeg/FFmpeg/archive/${pkgver}.tar.gz")
+sha256sums=('SKIP')
 
 build() {
   mkdir -p "${srcdir}/build-${MSYSTEM}" && cd "${srcdir}/build-${MSYSTEM}"
-  ${srcdir}/${_realname}-${pkgver}/configure \
+  ${srcdir}/FFmpeg-${pkgver}/configure \
     --prefix=${MINGW_PREFIX} \
     --target-os=mingw32 \
     --arch=${CARCH%%-*} \

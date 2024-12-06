@@ -50,27 +50,6 @@ diff --git a/meson.build b/meson.build
 index b7bcb1b0ba..9397988cb5 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -307,7 +307,7 @@ features += {'darwin': darwin}
- features += {'posix': posix}
- features += {'dos-paths': win32, 'win32': win32}
- 
--mswin_flags = ['-D_WIN32_WINNT=0x0A00', '-DWINVER=0x0A00', '-DUNICODE',
-+mswin_flags = ['-D_WIN32_WINNT=0x0602', '-DWINVER=0x0602', '-DUNICODE',
-                '-DCOBJMACROS', '-DINITGUID', '-DNOMINMAX',
-                '-D_USE_MATH_DEFINES', '-DWIN32_LEAN_AND_MEAN',
-                '-D_CRT_DECLARE_NONSTDC_NAMES', '-D_CRT_NONSTDC_NO_WARNINGS',
-@@ -497,11 +497,6 @@ endif
- 
- features += {'win32-desktop': win32 and not uwp.found()}
- if features['win32-desktop']
--    pathcch = cc.find_library('pathcch', required: false)
--    features += {'pathcch': pathcch.found()}
--    if features['pathcch']
--        dependencies += pathcch
--    endif
-     win32_desktop_libs = [cc.find_library('avrt'),
-                           cc.find_library('dwmapi'),
-                           cc.find_library('gdi32'),
 @@ -1007,7 +1002,8 @@ d3d11 = get_option('d3d11').require(
  features += {'d3d11': d3d11.allowed()}
  if features['d3d11']
